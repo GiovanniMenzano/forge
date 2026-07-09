@@ -191,9 +191,8 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
         pnlPrefs.add(btnDeleteWorkshopUI, twoButtonConstraints2);
         pnlPrefs.add(btnUserProfileUI, twoButtonConstraints1);
         pnlPrefs.add(btnContentDirectoryUI, twoButtonConstraints2);
-        pnlPrefs.add(btnDeckDirectoryUI, twoButtonConstraints1);
-        pnlPrefs.add(btnClearImageCache, twoButtonConstraints2);
-        pnlPrefs.add(btnTokenPreviewer, twoButtonConstraints1);
+        pnlPrefs.add(btnClearImageCache, twoButtonConstraints1);
+        pnlPrefs.add(btnTokenPreviewer, twoButtonConstraints2);
 
         // Search bar
         pnlPrefs.add(getSearchPanel(), "w 80%!, h 28px!, gap 25px 0 30px 40px, span 2 1");
@@ -334,6 +333,8 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
 
         // Deck Editor options
         pnlPrefs.add(new SectionLabel(localizer.getMessage("DeckEditorOptions")), sectionConstraints);
+		
+        pnlPrefs.add(btnDeckDirectoryUI, "w 25%!, h 30px!, gap 25px 0 0 20px, span 2 1, al left");
 
         pnlPrefs.add(cbFilterLandsByColorId, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlFilterLandsByColorId")), descriptionConstraints);
