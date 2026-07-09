@@ -38,10 +38,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Controls the preferences submenu in the home UI.
@@ -357,13 +364,124 @@ public enum CSubmenuPreferences implements ICDoc {
             return;
         }
 
-        String deckDir = selectedDir.getAbsolutePath();
+        final File oldDeckDir = new File(ForgeConstants.DECK_BASE_DIR);
+        final File newDeckDir = selectedDir.getAbsoluteFile();
+
+        if (!isSameDirectory(oldDeckDir, newDeckDir)) {
+            try {
+                if (isNestedDeckDirectory(oldDeckDir, newDeckDir)) {
+                    FOptionPane.showErrorDialog(
+						localizer.getMessage("lblDeckDirectoryNestedError"),
+                        localizer.getMessage("lblChooseDeckDirectory")
+					);
+                    return;
+                }
+            } catch (final IOException e) {
+                FOptionPane.showErrorDialog(
+					localizer.getMessage("lblDeckMigrationFailed", e.getMessage()),
+                    localizer.getMessage("lblError")
+				);
+                return;
+            }
+
+            if (
+				hasDirectoryContents(oldDeckDir) &&
+                FOptionPane.showConfirmDialog(
+                    localizer.getMessage("lblMigrateDecksPrompt", oldDeckDir.getAbsolutePath(), newDeckDir.getAbsolutePath()),
+					localizer.getMessage("lblMigrateDecksTitle"),
+					localizer.getMessage("lblYes"),
+					localizer.getMessage("lblNo"),
+					false
+	            )
+			) {
+                final AtomicInteger copiedFiles = new AtomicInteger();
+                final AtomicInteger skippedFiles = new AtomicInteger();
+                try {
+                    copyDeckDirectory(oldDeckDir, newDeckDir, copiedFiles, skippedFiles);
+                } catch (final IOException | RuntimeException e) {
+                    FOptionPane.showErrorDialog(localizer.getMessage("lblDeckMigrationFailed", e.getMessage()),
+                            localizer.getMessage("lblError"));
+                    return;
+                }
+
+                final String deckDir = getDirectoryPath(newDeckDir);
+                ForgeProfileProperties.setDecksDir(deckDir);
+                FOptionPane.showMessageDialog(
+                    localizer.getMessage(
+						"lblDeckDirectoryChangeRestartMigrated",
+						deckDir,
+                        String.valueOf(copiedFiles.get()),
+						String.valueOf(skippedFiles.get())
+					),
+                    localizer.getMessage("lblRestartRequired"));
+                return;
+            }
+        }
+
+        final String deckDir = getDirectoryPath(newDeckDir);
+        ForgeProfileProperties.setDecksDir(deckDir);
+        FOptionPane.showMessageDialog(
+			localizer.getMessage("lblDeckDirectoryChangeRestart", deckDir),
+            localizer.getMessage("lblRestartRequired")
+		);
+    }
+
+    private static String getDirectoryPath(final File dir) {
+        String deckDir = dir.getAbsolutePath();
         if (!deckDir.endsWith(File.separator)) {
             deckDir += File.separator;
         }
-        ForgeProfileProperties.setDecksDir(deckDir);
-        FOptionPane.showMessageDialog(localizer.getMessage("lblDeckDirectoryChangeRestart", deckDir),
-                localizer.getMessage("lblRestartRequired"));
+        return deckDir;
+    }
+
+    private static boolean hasDirectoryContents(final File dir) {
+        final String[] fileList = dir.list();
+        return fileList != null && fileList.length > 0;
+    }
+
+    private static boolean isSameDirectory(final File oldDeckDir, final File newDeckDir) {
+        try {
+            return oldDeckDir.getCanonicalFile().equals(newDeckDir.getCanonicalFile());
+        } catch (final IOException e) {
+            return oldDeckDir.getAbsoluteFile().equals(newDeckDir.getAbsoluteFile());
+        }
+    }
+
+    private static boolean isNestedDeckDirectory(final File oldDeckDir, final File newDeckDir) throws IOException {
+        final Path oldPath = oldDeckDir.getCanonicalFile().toPath();
+        final Path newPath = newDeckDir.getCanonicalFile().toPath();
+        return !oldPath.equals(newPath) && (oldPath.startsWith(newPath) || newPath.startsWith(oldPath));
+    }
+
+    private static void copyDeckDirectory(
+        final File oldDeckDir,
+        final File newDeckDir,
+        final AtomicInteger copiedFiles,
+        final AtomicInteger skippedFiles
+    ) throws IOException {
+        final Path sourcePath = oldDeckDir.toPath();
+        final Path targetPath = newDeckDir.toPath();
+
+        Files.walkFileTree(sourcePath, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+                Files.createDirectories(targetPath.resolve(sourcePath.relativize(dir)));
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                final Path targetFile = targetPath.resolve(sourcePath.relativize(file));
+                if (Files.exists(targetFile)) {
+                    skippedFiles.incrementAndGet();
+                    return FileVisitResult.CONTINUE;
+                }
+                Files.createDirectories(targetFile.getParent());
+                Files.copy(file, targetFile);
+                copiedFiles.incrementAndGet();
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     private void clearImageCache() {
