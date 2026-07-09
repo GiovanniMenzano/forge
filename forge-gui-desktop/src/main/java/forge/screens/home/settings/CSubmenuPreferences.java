@@ -14,6 +14,7 @@ import forge.gui.framework.FScreen;
 import forge.gui.framework.ICDoc;
 import forge.localinstance.properties.ForgeConstants;
 import forge.localinstance.properties.ForgeNetPreferences;
+import forge.localinstance.properties.ForgeProfileProperties;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.localinstance.properties.PreferencesStore;
@@ -191,6 +192,8 @@ public enum CSubmenuPreferences implements ICDoc {
 
         view.getBtnUserProfileUI().setCommand((UiCommand) CSubmenuPreferences.this::openUserProfileDirectory);
 
+        view.getBtnDeckDirectoryUI().setCommand((UiCommand) CSubmenuPreferences.this::changeDeckDirectory);
+
         view.getBtnClearImageCache().setCommand((UiCommand) CSubmenuPreferences.this::clearImageCache);
 
         view.getBtnTokenPreviewer().setCommand((UiCommand) CSubmenuPreferences.this::openTokenPreviewer);
@@ -337,6 +340,30 @@ public enum CSubmenuPreferences implements ICDoc {
         } catch(final Exception e) {
             System.out.println("Unable to open Directory: " + e.toString());
         }
+    }
+
+    private void changeDeckDirectory() {
+        final JFileChooser chooser = new JFileChooser(ForgeConstants.DECK_BASE_DIR);
+        chooser.setDialogTitle(localizer.getMessage("lblChooseDeckDirectory"));
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+
+        if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        final File selectedDir = chooser.getSelectedFile();
+        if (selectedDir == null) {
+            return;
+        }
+
+        String deckDir = selectedDir.getAbsolutePath();
+        if (!deckDir.endsWith(File.separator)) {
+            deckDir += File.separator;
+        }
+        ForgeProfileProperties.setDecksDir(deckDir);
+        FOptionPane.showMessageDialog(localizer.getMessage("lblDeckDirectoryChangeRestart", deckDir),
+                localizer.getMessage("lblRestartRequired"));
     }
 
     private void clearImageCache() {
