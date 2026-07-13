@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 /**
  * Controls the preferences submenu in the home UI.
@@ -368,6 +369,7 @@ public enum CSubmenuPreferences implements ICDoc {
         final File newDeckDir = selectedDir.getAbsoluteFile();
 
         if (!isSameDirectory(oldDeckDir, newDeckDir)) {
+            final boolean hasDeckFilesToCopy;
             try {
                 if (isNestedDeckDirectory(oldDeckDir, newDeckDir)) {
                     FOptionPane.showErrorDialog(
@@ -376,6 +378,7 @@ public enum CSubmenuPreferences implements ICDoc {
 					);
                     return;
                 }
+                hasDeckFilesToCopy = containsFiles(oldDeckDir, true);
             } catch (final IOException e) {
                 FOptionPane.showErrorDialog(
 					localizer.getMessage("lblDeckMigrationFailed", e.getMessage()),
@@ -385,7 +388,7 @@ public enum CSubmenuPreferences implements ICDoc {
             }
 
             if (
-				hasDirectoryContents(oldDeckDir) &&
+				hasDeckFilesToCopy &&
                 FOptionPane.showConfirmDialog(
                     localizer.getMessage("lblMigrateDecksPrompt", oldDeckDir.getAbsolutePath(), newDeckDir.getAbsolutePath()),
 					localizer.getMessage("lblMigrateDecksTitle"),
@@ -434,9 +437,17 @@ public enum CSubmenuPreferences implements ICDoc {
         return deckDir;
     }
 
-    private static boolean hasDirectoryContents(final File dir) {
-        final String[] fileList = dir.list();
-        return fileList != null && fileList.length > 0;
+    private static boolean containsFiles(final File dir, final boolean recursive) throws IOException {
+        if (!dir.isDirectory()) {
+            return false;
+        }
+        if (!recursive) {
+            final File[] files = dir.listFiles(File::isFile);
+            return files != null && files.length > 0;
+        }
+        try (Stream<Path> paths = Files.walk(dir.toPath())) {
+            return paths.anyMatch(Files::isRegularFile);
+        }
     }
 
     private static boolean isSameDirectory(final File oldDeckDir, final File newDeckDir) {
