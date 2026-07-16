@@ -17,7 +17,7 @@ import forge.localinstance.properties.ForgeNetPreferences;
 import forge.localinstance.properties.ForgeProfileProperties;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
-import forge.localinstance.properties.PreferencesStore;
+import forge.localinstance.properties.IPreferences;
 import forge.menus.LayoutMenu;
 import forge.model.FModel;
 import forge.player.GamePlayerUtil;
@@ -883,7 +883,7 @@ public enum CSubmenuPreferences implements ICDoc {
 
     }
 
-    private <E> FComboBox<E> createComboBox(final E[] items, final PreferencesStore.IPref setting) {
+    private <E> FComboBox<E> createComboBox(final E[] items, final IPreferences.IPref setting) {
         final FComboBox<E> comboBox = new FComboBox<>(items);
         addComboBoxListener(comboBox, setting);
         return comboBox;
@@ -891,7 +891,7 @@ public enum CSubmenuPreferences implements ICDoc {
 
     private <E> FComboBox<E> createLocalizedComboBox(
             final E[] localizedItems,
-            final PreferencesStore.IPref setting,
+            final IPreferences.IPref setting,
             final Map<E, String> mapping) {
 
         //Step 1: Create the combo box
@@ -904,7 +904,7 @@ public enum CSubmenuPreferences implements ICDoc {
     }
 
 
-    private <E> void addComboBoxListener(final FComboBox<E> comboBox, final PreferencesStore.IPref setting) {
+    private <E> void addComboBoxListener(final FComboBox<E> comboBox, final IPreferences.IPref setting) {
         comboBox.addItemListener(e -> {
             final E selectedType = comboBox.getSelectedItem();
             if (setting instanceof ForgePreferences.FPref) {
@@ -920,7 +920,7 @@ public enum CSubmenuPreferences implements ICDoc {
 
     private <E> void addLocalizedComboBoxListener(
             final FComboBox<E> comboBox,
-            final PreferencesStore.IPref setting,
+            final IPreferences.IPref setting,
             final Map<E, String> mapping) {
 
         comboBox.addItemListener(e -> {
