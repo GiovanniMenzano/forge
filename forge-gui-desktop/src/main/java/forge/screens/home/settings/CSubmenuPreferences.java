@@ -368,16 +368,36 @@ public enum CSubmenuPreferences implements ICDoc {
         final File oldDeckDir = new File(ForgeConstants.DECK_BASE_DIR);
         final File newDeckDir = selectedDir.getAbsoluteFile();
 
-        if (!isSameDirectory(oldDeckDir, newDeckDir)) {
+        final boolean isSameDeckDirectory = isSameDirectory(oldDeckDir, newDeckDir);
+        try {
+            if (!isSameDeckDirectory && isNestedDeckDirectory(oldDeckDir, newDeckDir)) {
+                FOptionPane.showErrorDialog(
+                    localizer.getMessage("lblDeckDirectoryNestedError"),
+                    localizer.getMessage("lblChooseDeckDirectory")
+                );
+                return;
+            }
+        } catch (final IOException e) {
+            FOptionPane.showErrorDialog(
+                localizer.getMessage("lblDeckMigrationFailed", e.getMessage()),
+                localizer.getMessage("lblError")
+            );
+            return;
+        }
+
+        try {
+            ensureWritableDirectory(newDeckDir);
+        } catch (final IOException e) {
+            FOptionPane.showErrorDialog(
+                localizer.getMessage("lblDeckDirectoryNotWritable"),
+                localizer.getMessage("lblError")
+            );
+            return;
+        }
+
+        if (!isSameDeckDirectory) {
             final boolean hasDeckFilesToCopy;
             try {
-                if (isNestedDeckDirectory(oldDeckDir, newDeckDir)) {
-                    FOptionPane.showErrorDialog(
-						localizer.getMessage("lblDeckDirectoryNestedError"),
-                        localizer.getMessage("lblChooseDeckDirectory")
-					);
-                    return;
-                }
                 hasDeckFilesToCopy = containsFiles(oldDeckDir, true);
             } catch (final IOException e) {
                 FOptionPane.showErrorDialog(
@@ -435,6 +455,18 @@ public enum CSubmenuPreferences implements ICDoc {
             deckDir += File.separator;
         }
         return deckDir;
+    }
+
+    private static void ensureWritableDirectory(final File dir) throws IOException {
+        final Path path = dir.toPath();
+        Files.createDirectories(path);
+
+        if (!Files.isDirectory(path)) {
+            throw new IOException(dir.getAbsolutePath());
+        }
+
+        final Path testFile = Files.createTempFile(path, "forge-deck-dir-test-", ".tmp");
+        Files.deleteIfExists(testFile);
     }
 
     private static boolean containsFiles(final File dir, final boolean recursive) throws IOException {
